@@ -6,7 +6,12 @@ library(DECIPHER)
 library(ape)
 library(viridis)
 library(cluster)
-
+library(seqinr)
+library(adegenet)
+library(pegas)
+library(apex)
+library(mmod)
+library(poppr)
 
 Wolf <- read_tsv("http://www.boldsystems.org/index.php/API_Public/combined?taxon=Canis&format=tsv")
 write_tsv(Wolf, "Wolf_BOLD_data.tsv")
@@ -14,14 +19,15 @@ Canis <- read_tsv("Wolf_BOLD_data.tsv")
 
 #Reduced Canis 
 Canis_rd <- Canis %>%
-  select(processid, genus_name, species_name, subspecies_name, bin_uri, country, markercode, nucleotides, lon, lat, genbank_accession) %>%
+  select(processid, genus_name, species_name, subspecies_name, bin_uri, country, markercode, nucleotides, lon, lat, recordID) %>%
   filter(species_name == "Canis lupus" | species_name == "Canis familiaris") %>%
   filter(markercode == "COI-5P")
 
 #Check
-count(Canis_rd, species_name)
-count(Canis_rd, subspecies_name)
-count(Canis_rd, markercode)
+#count gets masked so do this
+dplyr::count(Canis_rd, species_name)
+dplyr::count(Canis_rd, subspecies_name)
+dplyr::count(Canis_rd, markercode)
 #Working on the null Canis familiaris is just a sub species of Canis and should be treated as such
 #Relabel any Canis familiaris as such
 
@@ -35,8 +41,8 @@ for (n in 1:nrow(Canis_rd)){
 }
 
 #Check
-count(Canis_rd, species_name)
-count(Canis_rd, subspecies_name)
+dplyr::count(Canis_rd, species_name)
+dplyr::count(Canis_rd, subspecies_name)
 #Increased by 4 as expected
 
 #Quality checks and filtering
@@ -45,7 +51,7 @@ Canis_filtered <- Canis_rd %>%
   filter(!is.na(nucleotides2)) %>%
   mutate(species_name = str_replace(species_name, "Canis", "C.")) %>%
   mutate(subspecies_name = str_replace(subspecies_name, "Canis", "C.")) %>%
-  mutate(ID = paste(subspecies_name, genbank_accession, sep="_"))
+  mutate(ID = paste(subspecies_name, recordID, sep="_"))
 
 
 summary(nchar(Canis_filtered$nucleotides2))
@@ -62,7 +68,7 @@ Canis_filtered <- Canis_filtered %>%
   filter(nchar(nucleotides2) <= 1600)
 
 summary(nchar(Canis_filtered$nucleotides2))
-count(Canis_filtered, subspecies_name)
+dplyr::count(Canis_filtered, subspecies_name)
 
 Canis_filtered <- Canis_filtered  %>%
   mutate(Undefined = str_count(nucleotides2, "N")/nchar(nucleotides2))
@@ -73,7 +79,7 @@ sort(Canis_filtered$Undefined, decreasing = T)[1:20]
 Canis_filtered <- Canis_filtered  %>%
   filter(Undefined < 0.01)
 
-count(Canis_filtered, subspecies_name)
+dplyr::count(Canis_filtered, subspecies_name)
 
 #rm(Canis_rd)
 # Align time
@@ -96,10 +102,40 @@ Canis_clusters <- IdClusters(Canis_distanceMatrix, method = "NJ", cutoff = 0.02,
 
 count(Canis_clusters[[1]], cluster)
 Check <- filter(Canis_clusters[[1]], cluster == 1)
-name <- row.names(Check)
-FRAME$nucleotides2 <- as.character(FRAME$nucleotides2)
-BLAST <- as.data.frame(FRAME) %>%
-  filter(ID == name)
- 
-writeXStringSet(DNAStringSet(BLAST$nucleotides), file = "BLAST.fasta")
- 
+#Good might be a reverse 
+
+# Lets start analysis
+
+#Will help later 
+Canis_Multi <- read.multiFASTA("CanisAlignment.fasta")
+
+Canis_genind <- multidna2genind(Canis_Multi)
+
+#Set pop
+strata(Canis_genind) <- data.frame("Pop" = Canis_filtered$subspecies_name)
+head(strata(Canis_genind))
+setPop(Canis_genind) <- ~Pop
+#Set of outputs to analysis 
+diff_stats(Canis_genind, phi_st = T)
+
+bootstrap <- chao_bootstrap(Canis_genind, nreps = 100)
+#Could change statistic used here, probs should and justify 
+summarise_bootstrap(bootstrap, Gst_Nei)
+
+#amova
+Canis_DistPair <- dist.multidna(Canis_Multi, pool = T)
+#performing AMOVA
+amova(Canis_DistPair ~ Pop, data = strata(Canis_genind), nperm = 100)
+
+#PCA
+X <- scaleGen(Canis_genind, NA.method="mean")
+pca1 <- dudi.pca(X,cent=FALSE,scale=FALSE,scannf=FALSE,nf=3)
+barplot(pca1$eig[1:50],main="PCA eigenvalues", col=heat.colors(50))
+s.label(pca1$li)
+
+col <- funky(15)
+CanFac <- as.factor(Canis_filtered$subspecies_name)
+s.class(pca1$li, CanFac,xax=1,yax=3, col=transp(col,.6), axesell=FALSE,
+        cstar=0, cpoint=3, grid=FALSE)
+
+class(pop(Canis_genind))

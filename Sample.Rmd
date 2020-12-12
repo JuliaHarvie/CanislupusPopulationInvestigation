@@ -1,0 +1,57 @@
+---
+title: "Untitled"
+author: "Julia Harvie"
+date: "08/12/2020"
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, tidy= TRUE)
+```
+
+## Introduction 
+2 - 3 paragraphs 
+1.	What is the topic, why is it important
+2.	Sub area/ gap in knowledge
+3.	What is objective of the study. What kind/what will be done 
+
+1. Conflicting reports if the canis framiliaris is should be refered to as its own distinc species or as canis lupus framiliars and sub species of canis lupus. Resolution import for biomonitoring
+2. Is it species or is it sub and do different markers have different resolutions
+3. Going to test different markers. Going to compare it to othe rmembers of canis who are recgnizec as distinc species. 
+
+## Describe data set 1 paragraph
+•	Where did it come from 
+•	When and how was it obtained 
+
+``` {r code, echo=TRUE} 
+print("hello")
+```
+
+
+## Data Processing
+```{Data Aquisition}
+library(rentrez)
+search <- entrez_search(db = "nuccore", term = "canis lupus[ORGN] OR canis lupus [ORGN] AND cytb[Gene] OR chytochrome b[Gene] NOT (genome[TITL])", retmax = 100)
+search
+max <- search$count
+```
+
+## Software Tools Deception
+
+1 paragraph 
+•	What is the main tool that will be use
+•	Why did you pick it 
+•	Strength and weakness
+•	How will I adapt the vignette for my needs 
+
+
+```{Code section 2 - Analysis, echo=FALSE}
+plot(pressure)
+```
+## Results and Discussion 
+•	Use references!
+1.	What is the answer. What was discovered. Is this surprising
+2.	Any cavets? Bias, sample size limitations etc.
+3.	Next steps for this research
+4.	Optional: Reflection on the project paragraph
+

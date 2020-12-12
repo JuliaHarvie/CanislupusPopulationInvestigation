@@ -1,0 +1,37 @@
+---
+title: "CanisLupusPop"
+author: "Julia Harvie"
+date: "12/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction 
+2 - 3 paragraphs 
+1.	What is the topic, why is it important
+2.	Sub area/ gap in knowledge
+3.	What is objective of the study. What kind/what will be done 
+
+1. Conflicting reports if the canis framiliaris is should be refered to as its own distinc species or as canis lupus framiliars and sub species of canis lupus. Resolution import for biomonitoring
+2. Is it species or is it sub and do different markers have different resolutions
+3. Going to test different markers. Going to compare it to othe rmembers of canis who are recgnizec as distinc species. 
+
+## Describe data set 1 paragraph
+•	Where did it come from 
+•	When and how was it obtained 
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
