@@ -61,8 +61,8 @@ Canis_rd <- Canis %>%
   filter(species_name == "Canis lupus" | species_name == "Canis familiaris") %>%
   filter(markercode == "COI-5P")
 ```
-#Confirmation the intial data aquisition and filtering occured as expected 
-```{r Check, echo=FALSE}
+###Confirmation the intial data aquisition and filtering occured as expected 
+```{r Check1, echo=FALSE}
 #Confirm pre-filtering worked as intended by visualizing all the fields that remained. 
 # The function count is masked by another library so must specify dplyr::count
 print(dplyr::count(Canis_rd, species_name))
@@ -87,26 +87,26 @@ Canis_rd <- Canis_rd %>%
   mutate(species_name = str_replace(species_name, "Canis", "C.")) %>%
   mutate(subspecies_name = str_replace(subspecies_name, "Canis", "C."))
 ```
-# Confirmation records were renamed as expected 
-```{r Check, echo=False}
+### Confirmation records were renamed as expected 
+```{r Check2, echo=FALSE}
 #Check
 print(dplyr::count(Canis_rd, species_name))
 print(dplyr::count(Canis_rd, subspecies_name))
 ```
 
-```{r Quality Control, echo==FALSE}
+```{r Quality Control, echo=FALSE}
 #Remove Ns (ambigious bases) from beginning and end of the sequences, remove any records who do not have a sequence associated with them and assign every entry in the remaining data set a unique label for identification.
 Canis_filtered <- Canis_rd %>%
   mutate(nucleotides2 = str_remove_all(nucleotides, "^N+|N+$|-")) %>%
   filter(!is.na(nucleotides2)) %>%
   mutate(ID = paste(subspecies_name, recordID, sep="_"))
 ```
-#Confirmation no NA sequences remain and sequence data is appearing as expected
-``` {r, Check}
+###Confirmation no NA sequences remain and sequence data is appearing as expected
+``` {r, Check3}
 #Check
 summary(nchar(Canis_filtered$nucleotides2))
 ```
-#Visulization of sequence length in the data set. From this a sequence length range of 600 - 1600 was chosen to filter over.
+###Visulization of sequence length in the data set. From this a sequence length range of 600 - 1600 was chosen to filter over.
 ```{r Check Sequence Length, echo=FALSE}
 #Jitter plot showing the distribution of sequence length according to subspecies. DOne on the subspecies level to make sure filters are selected that filter fairly over all subspecies
 ggplot(Canis_filtered,aes(x=nchar(nucleotides2), y = subspecies_name, colour = subspecies_name), xmin = 0, xmax = max(nchar(nucleotides2))+100) +
@@ -120,7 +120,7 @@ Canis_filtered <- Canis_filtered %>%
   filter(nchar(nucleotides2) >= 600) %>%
   filter(nchar(nucleotides2) <= 1600)
 ```
-#Histogram depicting the number of sequences that have over 1% ambigious bases. Well there are soem present they are not numerious there all of these sequences were then filtered out of the data set to improve overall sequence quality. 
+###Histogram depicting the number of sequences that have over 1% ambigious bases. Well there are soem present they are not numerious there all of these sequences were then filtered out of the data set to improve overall sequence quality. 
 ``` {r Check Sequence Quality,}
 #Create column representing percent of sequence made up of ambiguous bases 
 Canis_filtered <- Canis_filtered  %>%
@@ -135,22 +135,22 @@ ggplot(LowQuality, aes(x=Undefined)) + geom_histogram(bins= 4,fill="gray", color
 Canis_filtered <- Canis_filtered  %>%
   filter(Undefined < 0.01)
 ```
-#Visulization of the the representation of the distibution of the populations after all quality filtering steps have occurred
-```{r Check, echo=FALSE}
+###Visulization of the the representation of the distibution of the populations after all quality filtering steps have occurred
+```{r Check4, echo=FALSE}
 print(dplyr::count(Canis_filtered, subspecies_name))
 ```
-#Due to the very low entries remaining for the subspecies *C. lupus chanco*, *C. lupus desertorum*, *C. lupus laniger* and *C. lupus lupus* they will all also be removed from the data set as the low sample size will mos tliekly skew any staistical tests performed on the data set. There is still more than enough *C. lupus familiars* sequences to perform an accurat epopulation structure analysis. 
+###Due to the very low entries remaining for the subspecies *C. lupus chanco*, *C. lupus desertorum*, *C. lupus laniger* and *C. lupus lupus* they will all also be removed from the data set as the low sample size will mos tliekly skew any staistical tests performed on the data set. There is still more than enough *C. lupus familiars* sequences to perform an accurat epopulation structure analysis. 
 ```{r Remove low entry subspecies}
 Canis_filtered <- Canis_filtered %>%
   filter(subspecies_name == "C. lupus" | subspecies_name == "C. lupus familiaris")
 ```
-#Confermation the final filter worked as expected 
-``` {r Check, echo=FALSE}
+###Confermation the final filter worked as expected 
+``` {r Check5, echo=FALSE}
 print(dplyr::count(Canis_filtered, subspecies_name))
 ```
-#Confirmation sequences are stored correctly for the alighnment function to work. 
+###Confirmation sequences are stored correctly for the alighnment function to work. 
 ```{r Alighnment, echo=FALSE}
-#Make sure the data is stored as the requirred class
+#Make sure the data is stored as the required class
 Canis_filtered <- as.data.frame(Canis_filtered)
 #Confirm
 print(class(Canis_filtered$nucleotides2))
@@ -158,7 +158,7 @@ print(class(Canis_filtered$nucleotides2))
 Canis_filtered$nucleotides2 <- DNAStringSet(Canis_filtered$nucleotides2)
 #Confirm
 print(class(Canis_filtered$nucleotides2))
-#Assign unqiue labels to every sequence
+#Assign unique labels to every sequence
 names(Canis_filtered$nucleotides2) <- Canis_filtered$ID
 
 #Due to the size of the data set will set a max time of 1 hour just in case
@@ -166,7 +166,7 @@ Canis_alignment <- DNAStringSet(muscle::muscle(Canis_filtered$nucleotides2, maxh
 #Export the alignment as a FASTA for use further down the pipeline
 writeXStringSet(Canis_alignment, file = "CanisAlignment.fasta")
 ```
-#Dendrogram produced from the distance matrix of the aigned sequence in to see if the data set contains any potentially misslabled or reverse compliment sequences. One sequence is clearly visable as an outlier. Its associated genebank accession was used to search it in NCBI's BLAST. Results of 99% similarity to *Canis lupus* were returned so it is most liekly not a misslabled sequence. The distance between it and the nearest cluster is not larger enough to suspect the sequence is a reverse compliment either. Therefor it is assumed outlier is a actual representation of large variation in population and will be included in the analysis.
+###Dendrogram produced from the distance matrix of the aigned sequence in to see if the data set contains any potentially misslabled or reverse compliment sequences. One sequence is clearly visable as an outlier. Its associated genebank accession was used to search it in NCBI's BLAST. Results of 99% similarity to *Canis lupus* were returned so it is most liekly not a misslabled sequence. The distance between it and the nearest cluster is not larger enough to suspect the sequence is a reverse compliment either. Therefor it is assumed outlier is a actual representation of large variation in population and will be included in the analysis.
 ```{r Quality Check of Alighnment, echo=FALSE}
 Canis_Bin <- as.DNAbin(Canis_alignment)
 #Create a distance matrix based off of aligned sequences. default evolutionary model of K80 will be used. Due to the variation in sequence length pairwise deletion will be used.
@@ -184,66 +184,62 @@ BLAST <- filter(Canis_filtered, ID == row.names(checkID))
 #Acquire genbank accession
 print(BLAST[,c("ID", "genbank_accession", "species_name", "subspecies_name")])
 ```
-## Software Tools Deception
+## Software Tools Description
 
-1 paragraph 
-•	What is the main tool that will be use
-•	Why did you pick it 
-•	Strength and weakness
-•	How will I adapt the vignette for my needs 
+The main resource for the analysis section of this experiment was the vignette "Population Differentiation for Sequence Data" by Margarita M. López- Uribe (Author) and Zhian N. Kamvar (edits) (cite). The workflow described in this vignette was chosen as a skeleton to build the analysis around as it begins with importing FASTA files containing aligned sequence data and shows the functions required to produce population genetic test statistics for said data. The strength of picking this vignette is that it starts with data in the same form my data is currently stored in, aligned FASTA files greatly increasing the likelihood I will be able to successfully recreate the pipeline with my own data. However a weakness of this vignette is it only shows how to produce the various test statistics, not how to choose the one that will be best suited for a specific data set. When working with statistics choosing an appropriate test statistic is critical. Just because a data set can be used to calculate a test statistic, does not mean output will offer any meaningful description of the data set. I will do additional research on the test statistics demonstrate to select the ones appropriate for my data set. In addition I will reference the "Introduction to genetic data analysis in R" vignette by Thibaut Jombart for direction on how to create figures that visualize the result the first vignette will help me produce (cite).
 
 
-
+##Results 
 ```{r Build geneid object}
-#Even though it is not multiple fastas beign read in, this gives it the class of multiFASTA which is required later 
+#Even though multiple FASTAs are not needed to be read in, using this function gives the object the class of multiFASTA which is required for another function down the pipeline. 
 Canis_Multi <- read.multiFASTA("CanisAlignment.fasta")
 Canis_genind <- multidna2genind(Canis_Multi)
 
-#Need to assign each individual to a population. For this the subspecies (or lack there of) designations is the population
+#Need to assign each sequence to a population. For this experiment the populations of interest can be defiend according to subspecies designation. 
 strata(Canis_genind) <- data.frame("Pop" = Canis_filtered$subspecies_name)
-head(strata(Canis_genind))
 setPop(Canis_genind) <- ~Pop
 ```
+All but one loci is biallelic therefor Nei's Gst will be an appropriate statistic to use for this analysis as opposed to Hedrick's Gst which is suited for multiallelic data sets (cite). Another situation in which Nei's Gst does not offer great resolution of population structure is when working with markers with high mutation rates such as microsatellites. Again, not super relevant for this data set as CO1 has a slower mutation rate by comparison, but the Jost's D will also be looked to confirm this assumption is accurate.
+```{r Allele count}
 
-```{r Produce population staistics}
-
-#Check how many alelles are present to determine staistical metric to use
+#Check how many alleles are present at each loci
 print(Canis_genind@loc.n.all)
 #2 for all means Fst or Nei's Gst should be used. Not Hedrick's Gst which is for multiallic data 
-
-diff_stats(Canis_genind)
-#Not in right form
-#diff_test(Canis_genind, sim = TRUE, nreps = 200)
-
-#Test to see if populations are satistically different 
-bootstrap <- chao_bootstrap(Canis_genind, nreps = 100)
-summarise_bootstrap(bootstrap, D_Jost)
-summarise_bootstrap(bootstrap, Gst_Nei)
-
-#Amova
-Canis_DistPair <- dist.multidna(Canis_Multi)# no go
-Canis_DistPair <- dist.multidna(Canis_Multi, pool = T) # yep
-#performing AMOVA
-
-Canis_AMOVA <- poppr.amova(Canis_genind, ~Pop, nperm = 100)
-
-Canis_AMOVA_random <- randtest(Canis_AMOVA , nrepet = 999)
-plot(Canis_AMOVA_random )
 ```
 
-```{r Create PCA}
+```{r Test stats}
+knitr::kable(
+  diff_stats(Canis_genind)$global,
+  caption = "Table 1. Summary Population test Staistics."
+)
+```
+A Nei's Gst (Gst_est) of between 0.05 and 0.15 indicates moderate allelic differences between the populations. A Jost's D (D_het) indicates the two populations share a majority of their alleles.
+
+```{r AMOVA, echo=FALSE}
+Canis_DistPair <- dist.multidna(Canis_Multi, pool = T)
+Canis_AMOVA <- pegas::amova(Canis_DistPair ~ Pop, data = strata(Canis_genind), nperm = 100)
+knitr::kable(
+  Canis_AMOVA$tab,
+  caption = "Table 2. AMOVA of C. Lupus."
+)
+```
+
+```{r Create PCA, echo=FALSE}
 Canis_scaled <- scaleGen(Canis_genind, NA.method="mean")
 Canis_PCA <- dudi.pca(Canis_scaled,cent=FALSE,scale=FALSE,scannf=FALSE,nf=3)
-col <- viridis(4)
-s.class(Canis_PCA$li, as.factor(Canis_filtered$subspecies_name),xax=1,yax=3, col=viridis(4), axesell=FALSE,
-        cstar=0, cpoint=3, grid=FALSE)
+s.class(Canis_PCA$li, Canis_genind@pop,col=viridis(2), axesell=T,
+        cstar=0, cpoint=2, grid=FALSE, clabel= 0.75, label = c(" ", "Canis lupus familiaris "))
 
 class(pop(Canis_genind))
 ```
 
-## Results and Discussion 
+## Discussion 
 •	Use references!
 1.	What is the answer. What was discovered. Is this surprising
+cite Jost
+
 2.	Any cavets? Bias, sample size limitations etc.
+Dont know the breed of dog that could matter. Also did not get to compare with outher subspecies to see if it is unqiue as far as subspecies go
 3.	Next steps for this research
+Perform again using a genomic  marker not mitochiondrial. Try to produce populations of useful sizes for other subspecies. Include sequences for closest species to see interspecies variation present in canis amougn undisputed unqiue species.. 
 4.	Optional: Reflection on the project paragraph
