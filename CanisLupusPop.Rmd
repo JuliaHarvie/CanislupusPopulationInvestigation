@@ -28,9 +28,9 @@ library(poppr)
 
 # Introduction 
 
-In a 2016 article published in the journal Nature, the scientific name used for the domestic dog is *Canis lupus familiaris* [@Suraci2016]. However, in a 2015 article also published in Nature, the domestic dog is referred to as *Canis familiaris* [@Tonoike2015]. This is just one of many examples of the lack of consensus even peer reviewed sources as to the correct naming convention for the taxa whose common name is dog. At first this may appear to be a trivial issues, as either version will still identify the taxa as dog. But besides the obvious recording keeping issues associated with one taxa having two names, there is the problem that in accordance with the International Code of Zoological Nomenclature (ICZ) the two versions of the name carry two very different meaning [@InternationalCommissiononZoologicalNomenclature]. According to ICZN the naming convention *C. lupus familiaris* indicates it is a subspecies of *C. lupus* (wolf) . Where as the namign convention identifies the taxa *C. familiaris* is its own species that belongs to the genus *Canis* along side *C. lupus*. 
+In a 2016 article published in the journal Nature, the scientific name used for the domestic dog is *Canis lupus familiaris* [@Suraci2016]. However, in a 2015 article also published in Nature, the domestic dog is referred to as *Canis familiaris* [@Tonoike2015]. This is just one of many examples of the lack of consensus even peer reviewed sources as to the correct naming convention for the taxa whose common name is dog. At first this may appear to be a trivial issues, as either version will still identify the taxa as dog. But besides the obvious recording keeping issues associated with one taxa having two names, there is the problem that in accordance with the International Code of Zoological Nomenclature (ICZ) the two versions of the name carry two very different meaning [@InternationalCommissiononZoologicalNomenclature]. According to ICZN the naming convention *C. lupus familiaris* indicates it is a subspecies of *C. lupus* (wolf) . Where as the naming convention identifies the taxa *C. familiaris* is its own species that belongs to the genus *Canis* along side *C. lupus*. 
 
-Real life applications that are influenced by this distinction are conservation efforts and DNA biomonitoring. Severe inbreeding depression has been found in some *C. lupus* populations and if *C. lupus framiliaris* is a subspecies of *C. lupus* individuals from *C. lupus familiaris* could be used for breeding plans to decrease the inbreeding depression well still maintaining a genome that is purely *Canis lupus*. The alternative argument being if *C. lupus framiliaris* has progressed far enough down the path of evolution that it is its own species, individuals from that population should not be used for *C. lupus* conservation work. If DNA sequenced based biomnitoring is going to be performed on a *C. lupus population*, it maybe be important to distinguish if a sample testing positive for *C. lupus* came specifically from *C. lupus familiaris*. Knowing the level of allelic differences in their respectivegenomes will indicate how difficult making this distinction using sequence may be. 
+Real life applications that are influenced by this distinction are conservation efforts and DNA biomonitoring. Severe inbreeding depression has been found in some *C. lupus* populations and if *C. lupus framiliaris* is a subspecies of *C. lupus* individuals from *C. lupus familiaris* could be used for breeding plans to decrease the inbreeding depression well still maintaining a genome that is purely *Canis lupus*. The alternative argument being if *C. lupus framiliaris* has progressed far enough down the path of evolution that it is its own species, individuals from that population should not be used for *C. lupus* conservation work. If DNA sequenced based biomnitoring is going to be performed on a *C. lupus population*, it maybe be important to distinguish if a sample testing positive for *C. lupus* came specifically from *C. lupus familiaris*. Knowing the level of allelic differences in their respective genomes will indicate how difficult making this distinction using sequence may be. 
 
 This experiment will define and compare the population structures of *C. lupus* and *C. lupus familiaris* using Cytochrome c oxidase I (CO1) sequences mined from the Barcode of Life Database (BOLD) [@Hebert2007]. These sequences will be filtered according to sequence length and base quality and then aligned. Population statistics will be calculated for these aligned sequences, including Nei's Gst and Jost's Das well as a AMOVA. Finally the structure of the sequence variance will be visualized through a principal components analysis (PCA). The null hypothesis is that there may be some detectable population structure among *Canis lupus familiars* but it is still just a sub population or sub species of *Canis lupus* that still experience genetic drift due to gene flow from the rest of the population. The alternative hypothesis to this is that *Canis lupus familiaris* not only has a distinct population structure but it is significantly variant from the population structure of *Canis lupus* and this should be acknowledged through identifying individuals of said population as *Canis familiaris*. For the remainder of this report the naming convention *Canis lupus familiaris* will be used in accordance with the null hypothesis. 
 
@@ -174,7 +174,7 @@ knitr::kable(
 
 Confirmation sequences are stored correctly for the alighnment function to work. 
 
-```{r Alighnment, echo=FALSE}
+```{r Alighnment prep, echo=FALSE}
 #Make sure the data is stored as the required class
 Canis_filtered <- as.data.frame(Canis_filtered)
 #Confirm
@@ -185,13 +185,15 @@ Canis_filtered$nucleotides2 <- DNAStringSet(Canis_filtered$nucleotides2)
 print(class(Canis_filtered$nucleotides2))
 #Assign unique labels to every sequence
 names(Canis_filtered$nucleotides2) <- Canis_filtered$ID
+```
 
+``` {r Alighnment, include=FALSE}
 #Due to the size of the data set will set a max time of 1 hour just in case
-Canis_alignment <- DNAStringSet(muscle::muscle(Canis_filtered$nucleotides2, maxhours = 1), use.names = TRUE)
+#Canis_alignment <- DNAStringSet(muscle::muscle(Canis_filtered$nucleotides2, maxhours = 1), use.names = TRUE)
 #Export the alignment as a FASTA for use further down the pipeline
-writeXStringSet(Canis_alignment, file = "CanisAlignment.fasta")
+#writeXStringSet(Canis_alignment, file = "CanisAlignment.fasta")
 #If alignment has been created, comment out above lines and just read it in using below
-#Read <- read.FASTA("CanisAlignment.fasta")
+Read <- read.FASTA("CanisAlignment.fasta")
 ```
 
 Dendrogram produced from the distance matrix of the aligned sequence in to see if the data set contains any potentially mislabeled or reverse compliment sequences. 
@@ -427,7 +429,7 @@ Below is all of the R scripted used to generate the above report. All lines have
 # )
 # ```
  
-# ```{r Alighnment, echo=FALSE}
+# ```{r Alighnment prep, echo=FALSE}
 # #Make sure the data is stored as the required class
 # Canis_filtered <- as.data.frame(Canis_filtered)
 # #Confirm
@@ -438,8 +440,10 @@ Below is all of the R scripted used to generate the above report. All lines have
 # print(class(Canis_filtered$nucleotides2))
 # #Assign unique labels to every sequence
 # names(Canis_filtered$nucleotides2) <- Canis_filtered$ID
-# 
-# #Due to the size of the data set will set a max time of 1 hour just in case
+# ```
+
+#``` {r Alighnment, include=FALSE}
+#Due to the size of the data set will set a max time of 1 hour just in case
 # Canis_alignment <- DNAStringSet(muscle::muscle(Canis_filtered$nucleotides2, maxhours = 1), use.names = TRUE)
 # #Export the alignment as a FASTA for use further down the pipeline
 # writeXStringSet(Canis_alignment, file = "CanisAlignment.fasta")
