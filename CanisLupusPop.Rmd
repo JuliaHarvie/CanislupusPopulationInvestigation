@@ -2,36 +2,248 @@
 title: "CanisLupusPop"
 author: "Julia Harvie"
 date: "12/12/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, tidy= TRUE)
+library(Biostrings)
+library(tidyverse)
+library(muscle)
+library(DECIPHER)
+library(ape)
+library(viridis)
+library(cluster)
+library(seqinr)
+library(adegenet)
+library(pegas)
+library(apex)
+library(mmod)
+library(poppr)
 ```
 
 ## Introduction 
-2 - 3 paragraphs 
-1.	What is the topic, why is it important
-2.	Sub area/ gap in knowledge
-3.	What is objective of the study. What kind/what will be done 
 
-1. Conflicting reports if the canis framiliaris is should be refered to as its own distinc species or as canis lupus framiliars and sub species of canis lupus. Resolution import for biomonitoring
-2. Is it species or is it sub and do different markers have different resolutions
-3. Going to test different markers. Going to compare it to othe rmembers of canis who are recgnizec as distinc species. 
+In a 2016 Article published in Nature, the scientific name given for the domestic dog is *Canis lupus familiaris* (cite Suraci). However in a 2015 article also published in Nature the domestic dog is refered to as *Canis familiaris* (cite Tonoike). This is just one of many examples of the lack of consensus even among peer reviewed sources regarding how to formally address the species whose common name is dog. At first this may appear a rather trivial problem as either way the read will know the organism being referenced is the dog. But besides the obvious recording keeping issues associated with one group having two names, there is a second issue that in accordance with the International Code of Zoological Nomenclature (ICZ) the two versions of the name carry two very different meaning (cite). According to ICZN *C. lupus familiaris* is a subspecies of *C. lupus*. Where as *C. familiaris* is its own species and is one of many species that share the genus *Canis* with *C. lupus*. 
 
-## Describe data set 1 paragraph
-•	Where did it come from 
-•	When and how was it obtained 
-```{r cars}
-summary(cars)
+A real life application that would be influenced by this distinction is conservation efforts and biomonitoring. Severe inbreeding depression has been found in some *C.s lupus* populations, if *C. lupus framiliaris* is truly still a subspecies of *C. lupus* individuals from *C. lupus familiaris* could be used for breeding plans to decrease the inbreeding depression well still maintaining a genome that is purely *Canis lupus*. The alternative argument being if *C. lupus framiliaris* has progressed far enough down the path of evolution that it is its own species individuals form that population should not be used for *C. lupus* conservation work. If DNA sequenced based biomnitoring is going to be performed on a *C. lupus population*, it maybe be important to distinguish if a *C. lupus* sample was form *C. lupus familiaris*. Knowing the level of allelic differences in their respective  genomes will indicate how difficult making this distinction using sequence may be. 
+
+This experiment will define and compare population structures of *C. lupus* and *C. lupus familiaris* using Cytochrome c oxidase I (CO1) sequences mined from the Barcode of Life database (BOLD) (cite BOLD). The will be filtering according to sequence length and base quality, the aligned to perform statistical analysis of the allelic variations. 
+
+*Insert test names here
+
+And finally the structure of the sequence variance will be visualized through a principal components analysis (PCA). 
+The null hypothesis is that well there may be some detectable population structure among *Canis lupus familiars* it is still just a sub population or sub species of *Canis lupus* that experience genetic drift do to gene flow between individuals of both taxons. The alternative hypothesis to this is that *Canis lupus familiaris* not only has a distinct population structure but it is significantly variant from the population structure of *Canis lupus* and this should be acknowledged through identifying individuals of said population as *Canis familiaris*. For the remainder of this report the naming convention *Canis lupus familiaris* will be used in accordance with the null hypothesis. 
+
+
+## The Data set
+All sequence data used for this experiment was obtained from the publicly available data on BOLD on December 2, 2020. This initial BOLD query was for all database records.  belonging to the genius *Canis* for any marker type, and any bailable metadata for the records. This yielded a data set of 1828 records with 79 possible metadata fields, and one DNA sequence. This was then reduced to only contain records produced using the CO1 marker that were labeled as belonging to the species *Canis lupus*. The number of fields in this reduced dataset was also restricuted to only include 6 piece sof metadata and the sequence data. This produced a data set of 1685 records, with 7 associated fields, spaning one species and 5 subspecies.
+
+
+## Code Part 1
+```{r Read in data, echo=FALSE}
+#The first time the script is run the two uncommented commands must be used. Afterwards to save time the results can just be read into R but uncommenting the third command
+# Initial query pull from BOLD
+Canis <- read_tsv("http://www.boldsystems.org/index.php/API_Public/combined?taxon=Canis&format=tsv")
+#Write to disk for future use
+write_tsv(Canis, "BoldCanis_data.tsv")
+#Reading back in saved query
+#Canis <- read_tsv("BoldCanis_data.tsv")
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r Reduce data, echo=FALSE}
+#Curate BOLD data to only the species and fields required for this analysis
+#Need to make sure any C. lupus familiaris records uploaded under Cani familiaris are also included in this reduced data set
+Canis_rd <- Canis %>%
+  select(species_name, subspecies_name, country, markercode, nucleotides, recordID, genbank_accession) %>%
+  filter(species_name == "Canis lupus" | species_name == "Canis familiaris") %>%
+  filter(markercode == "COI-5P")
+```
+#Confirmation the intial data aquisition and filtering occured as expected 
+```{r Check, echo=FALSE}
+#Confirm pre-filtering worked as intended by visualizing all the fields that remained. 
+# The function count is masked by another library so must specify dplyr::count
+print(dplyr::count(Canis_rd, species_name))
+print(dplyr::count(Canis_rd, subspecies_name))
+print(dplyr::count(Canis_rd, markercode))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+``` {r Unify naming convention}
+#This data set has record under both naming schemes. Keeping with the null hypothesis any Canis familiaris will be relabeled Canis lupus familiars and assigned as a subspecies.
+#In addition to remove the NA from the subspecies_name field records that do not have an associated subspecies are labeled as just Canis lupus to indicate this 
+for (n in 1:nrow(Canis_rd)){
+  if (Canis_rd[n,"species_name"] == "Canis familiaris") {
+    Canis_rd[n,"species_name"] <- "Canis lupus"
+    Canis_rd[n,"subspecies_name"] <- "Canis lupus familiaris"
+  } else if (is.na(Canis_rd[n,"subspecies_name"])){
+    Canis_rd[n,"subspecies_name"] <- "Canis lupus"
+  }
+}
+
+#Using the namign convention C. instead of Canis cleans up the labels for use in figures down the pipeline
+Canis_rd <- Canis_rd %>%
+  mutate(species_name = str_replace(species_name, "Canis", "C.")) %>%
+  mutate(subspecies_name = str_replace(subspecies_name, "Canis", "C."))
+```
+# Confirmation records were renamed as expected 
+```{r Check, echo=False}
+#Check
+print(dplyr::count(Canis_rd, species_name))
+print(dplyr::count(Canis_rd, subspecies_name))
+```
+
+```{r Quality Control, echo==FALSE}
+#Remove Ns (ambigious bases) from beginning and end of the sequences, remove any records who do not have a sequence associated with them and assign every entry in the remaining data set a unique label for identification.
+Canis_filtered <- Canis_rd %>%
+  mutate(nucleotides2 = str_remove_all(nucleotides, "^N+|N+$|-")) %>%
+  filter(!is.na(nucleotides2)) %>%
+  mutate(ID = paste(subspecies_name, recordID, sep="_"))
+```
+#Confirmation no NA sequences remain and sequence data is appearing as expected
+``` {r, Check}
+#Check
+summary(nchar(Canis_filtered$nucleotides2))
+```
+#Visulization of sequence length in the data set. From this a sequence length range of 600 - 1600 was chosen to filter over.
+```{r Check Sequence Length, echo=FALSE}
+#Jitter plot showing the distribution of sequence length according to subspecies. DOne on the subspecies level to make sure filters are selected that filter fairly over all subspecies
+ggplot(Canis_filtered,aes(x=nchar(nucleotides2), y = subspecies_name, colour = subspecies_name), xmin = 0, xmax = max(nchar(nucleotides2))+100) +
+  scale_x_continuous(breaks =seq(0, max(nchar(Canis_filtered$nucleotides2))+100 , by = 200)) +
+  geom_jitter(show.legend = F) +
+  geom_boxplot(outlier.shape = NA, colour="black", show.legend = F, fill = NA) +
+  xlab("Sequence Length")
+
+#Based off above plot a range of 600-1600 was selected for ther sequence length
+Canis_filtered <- Canis_filtered %>%
+  filter(nchar(nucleotides2) >= 600) %>%
+  filter(nchar(nucleotides2) <= 1600)
+```
+#Histogram depicting the number of sequences that have over 1% ambigious bases. Well there are soem present they are not numerious there all of these sequences were then filtered out of the data set to improve overall sequence quality. 
+``` {r Check Sequence Quality,}
+#Create column representing percent of sequence made up of ambiguous bases 
+Canis_filtered <- Canis_filtered  %>%
+  mutate(Undefined = str_count(nucleotides2, "N")/nchar(nucleotides2))
+
+
+hist(filter(Canis_filtered, Undefined > 0.01)$Undefined)
+LowQuality <- filter(Canis_filtered, Undefined > 0.01)
+
+ggplot(LowQuality, aes(x=Undefined)) + geom_histogram(bins= 4,fill="gray", color="black") + labs(x="Ratio of missing bases to total sequence length", y = "Number ofsequences") + theme_bw()
+#Conclude this is a good value to filter at
+Canis_filtered <- Canis_filtered  %>%
+  filter(Undefined < 0.01)
+```
+#Visulization of the the representation of the distibution of the populations after all quality filtering steps have occurred
+```{r Check, echo=FALSE}
+print(dplyr::count(Canis_filtered, subspecies_name))
+```
+#Due to the very low entries remaining for the subspecies *C. lupus chanco*, *C. lupus desertorum*, *C. lupus laniger* and *C. lupus lupus* they will all also be removed from the data set as the low sample size will mos tliekly skew any staistical tests performed on the data set. There is still more than enough *C. lupus familiars* sequences to perform an accurat epopulation structure analysis. 
+```{r Remove low entry subspecies}
+Canis_filtered <- Canis_filtered %>%
+  filter(subspecies_name == "C. lupus" | subspecies_name == "C. lupus familiaris")
+```
+#Confermation the final filter worked as expected 
+``` {r Check, echo=FALSE}
+print(dplyr::count(Canis_filtered, subspecies_name))
+```
+#Confirmation sequences are stored correctly for the alighnment function to work. 
+```{r Alighnment, echo=FALSE}
+#Make sure the data is stored as the requirred class
+Canis_filtered <- as.data.frame(Canis_filtered)
+#Confirm
+print(class(Canis_filtered$nucleotides2))
+#Transform for alignment function
+Canis_filtered$nucleotides2 <- DNAStringSet(Canis_filtered$nucleotides2)
+#Confirm
+print(class(Canis_filtered$nucleotides2))
+#Assign unqiue labels to every sequence
+names(Canis_filtered$nucleotides2) <- Canis_filtered$ID
+
+#Due to the size of the data set will set a max time of 1 hour just in case
+Canis_alignment <- DNAStringSet(muscle::muscle(Canis_filtered$nucleotides2, maxhours = 1), use.names = TRUE)
+#Export the alignment as a FASTA for use further down the pipeline
+writeXStringSet(Canis_alignment, file = "CanisAlignment.fasta")
+```
+#Dendrogram produced from the distance matrix of the aigned sequence in to see if the data set contains any potentially misslabled or reverse compliment sequences. One sequence is clearly visable as an outlier. Its associated genebank accession was used to search it in NCBI's BLAST. Results of 99% similarity to *Canis lupus* were returned so it is most liekly not a misslabled sequence. The distance between it and the nearest cluster is not larger enough to suspect the sequence is a reverse compliment either. Therefor it is assumed outlier is a actual representation of large variation in population and will be included in the analysis.
+```{r Quality Check of Alighnment, echo=FALSE}
+Canis_Bin <- as.DNAbin(Canis_alignment)
+#Create a distance matrix based off of aligned sequences. default evolutionary model of K80 will be used. Due to the variation in sequence length pairwise deletion will be used.
+Canis_distanceMatrix <- dist.dna(Canis_Bin, model = "k80", as.matrix = TRUE, pairwise.deletion = TRUE)
+#Create a dendrogram 
+Canis_clusters <- IdClusters(Canis_distanceMatrix, method = "NJ", cutoff = 0.02, showPlot = TRUE, type = "both", verbose = TRUE)
+
+#Identify which cluster the outlier belongs to and then extract it from the data frame for investigation
+#Identify which cluster it was assigned to
+print(dplyr::count(Canis_clusters[[1]], cluster))
+#Filter by cluster
+checkID <- filter(Canis_clusters[[1]], cluster == 1)
+Canis_filtered$nucleotides2 <- as.character(Canis_filtered$nucleotides2)
+BLAST <- filter(Canis_filtered, ID == row.names(checkID))
+#Acquire genbank accession
+print(BLAST[,c("ID", "genbank_accession", "species_name", "subspecies_name")])
+```
+## Software Tools Deception
+
+1 paragraph 
+•	What is the main tool that will be use
+•	Why did you pick it 
+•	Strength and weakness
+•	How will I adapt the vignette for my needs 
+
+
+
+```{r Build geneid object}
+#Even though it is not multiple fastas beign read in, this gives it the class of multiFASTA which is required later 
+Canis_Multi <- read.multiFASTA("CanisAlignment.fasta")
+Canis_genind <- multidna2genind(Canis_Multi)
+
+#Need to assign each individual to a population. For this the subspecies (or lack there of) designations is the population
+strata(Canis_genind) <- data.frame("Pop" = Canis_filtered$subspecies_name)
+head(strata(Canis_genind))
+setPop(Canis_genind) <- ~Pop
+```
+
+```{r Produce population staistics}
+
+#Check how many alelles are present to determine staistical metric to use
+print(Canis_genind@loc.n.all)
+#2 for all means Fst or Nei's Gst should be used. Not Hedrick's Gst which is for multiallic data 
+
+diff_stats(Canis_genind)
+#Not in right form
+#diff_test(Canis_genind, sim = TRUE, nreps = 200)
+
+#Test to see if populations are satistically different 
+bootstrap <- chao_bootstrap(Canis_genind, nreps = 100)
+summarise_bootstrap(bootstrap, D_Jost)
+summarise_bootstrap(bootstrap, Gst_Nei)
+
+#Amova
+Canis_DistPair <- dist.multidna(Canis_Multi)# no go
+Canis_DistPair <- dist.multidna(Canis_Multi, pool = T) # yep
+#performing AMOVA
+
+Canis_AMOVA <- poppr.amova(Canis_genind, ~Pop, nperm = 100)
+
+Canis_AMOVA_random <- randtest(Canis_AMOVA , nrepet = 999)
+plot(Canis_AMOVA_random )
+```
+
+```{r Create PCA}
+Canis_scaled <- scaleGen(Canis_genind, NA.method="mean")
+Canis_PCA <- dudi.pca(Canis_scaled,cent=FALSE,scale=FALSE,scannf=FALSE,nf=3)
+col <- viridis(4)
+s.class(Canis_PCA$li, as.factor(Canis_filtered$subspecies_name),xax=1,yax=3, col=viridis(4), axesell=FALSE,
+        cstar=0, cpoint=3, grid=FALSE)
+
+class(pop(Canis_genind))
+```
+
+## Results and Discussion 
+•	Use references!
+1.	What is the answer. What was discovered. Is this surprising
+2.	Any cavets? Bias, sample size limitations etc.
+3.	Next steps for this research
+4.	Optional: Reflection on the project paragraph
